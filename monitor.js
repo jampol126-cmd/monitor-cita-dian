@@ -119,6 +119,19 @@ async function buscarDisponibles(page) {
   return null;
 }
 
+// Para el diagnóstico: HTML y lista de textos pulsables visibles.
+async function describir(page) {
+  const html = await page.content().catch(() => '');
+  const clicables = await page.evaluate(() => {
+    const els = [...document.querySelectorAll('a, button, [role=button], [role=link], [role=tab], [onclick], select, input, label, li, h1, h2, h3')];
+    return els.filter((e) => e.offsetParent !== null)
+      .map((e) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}: ${(e.innerText || e.value || e.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 80)}`)
+      .filter((t) => !t.endsWith(': ')).slice(0, 80).join('\n');
+  }).catch((e) => `error: ${e.message}`);
+  const frames = page.frames().map((f) => f.url()).filter((u) => u && u !== 'about:blank').join('\n');
+  return { html, clicables: `${clicables}\n-- frames --\n${frames}\n-- url: ${page.url()}` };
+}
+
 // Una consulta completa. Devuelve { estado, detalle, captura }.
 // estado: disponible | sin_citas | desconocido | captcha
 async function consultar(browser, { fotosPorPaso = false } = {}) {
@@ -136,7 +149,8 @@ async function consultar(browser, { fotosPorPaso = false } = {}) {
       const hecho = await pulsar(page, paso);
       if (!hecho) {
         await foto(`No encontré "${paso}"`);
-        return { estado: 'desconocido', detalle: `No encontré el paso "${paso}". Pasos hechos: ${recorrido.join(' > ') || 'ninguno'}`, captura: await page.screenshot({ fullPage: true }), fotos };
+        const extra = fotosPorPaso ? await describir(page) : {};
+        return { estado: 'desconocido', detalle: `No encontré el paso "${paso}". Pasos hechos: ${recorrido.join(' > ') || 'ninguno'}`, captura: await page.screenshot({ fullPage: true }), fotos, ...extra };
       }
       recorrido.push(hecho);
       await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
@@ -167,6 +181,11 @@ function mensajeDisponible(r) {
 async function diagnostico(browser) {
   await tg.enviarMensaje(`🔎 Diagnóstico del monitor DIAN (${ahora()}). Te mando una foto por cada paso.`);
   const r = await consultar(browser, { fotosPorPaso: true });
+  const fs = require('fs');
+  fs.mkdirSync('diagnostico', { recursive: true });
+  r.fotos.forEach((f, i) => fs.writeFileSync(`diagnostico/${String(i).padStart(2, '0')}.png`, f.png));
+  if (r.html) fs.writeFileSync('diagnostico/ultima-pantalla.html', r.html);
+  if (r.clicables) console.log(`Elementos visibles en la última pantalla:\n${r.clicables}`);
   for (const f of r.fotos) await tg.enviarFoto(f.png, f.nombre);
   await tg.enviarMensaje(`Resultado: ${r.estado}\n${r.detalle}`);
   console.log(`Diagnóstico: ${r.estado} | ${r.detalle}`);

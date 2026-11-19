@@ -50,3 +50,12 @@ jobs:
           PASOS: ${{ vars.PASOS }}
           INTERVALO_SEG: ${{ vars.INTERVALO_SEG || '150' }}
         run: node monitor.js
+
+      - name: Guardar capturas del diagnóstico
+        if: always() && github.event.inputs.modo == 'diagnostico'
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostico
+          path: diagnostico/
+          retention-days: 3
+          if-no-files-found: ignore
