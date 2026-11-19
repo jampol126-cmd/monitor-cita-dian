@@ -1,0 +1,30 @@
+name: Recordatorio citas DIAN
+
+on:
+  schedule:
+    # Cada hora de 7 a. m. a 7 p. m. hora Colombia, lunes a sábado.
+    # (Colombia es UTC-5: 12:00-23:00 UTC, y las 7 p. m. son las 00:00 UTC del día siguiente.)
+    # GitHub puede atrasar cada aviso unos minutos.
+    - cron: '0 12-23 * * 1-6'
+    - cron: '0 0 * * 2-6,0'
+  workflow_dispatch:   # botón "Run workflow" para probarlo
+
+permissions:
+  contents: read
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enviar recordatorio
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DATOS_CITA: ${{ secrets.DATOS_CITA }}
+          CIUDAD: ${{ vars.CIUDAD || 'Medellín' }}
+        run: node recordatorio.js
