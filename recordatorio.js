@@ -14,8 +14,10 @@ m += '\n\nCuando consigas la cita, apaga los avisos en GitHub: Actions > Recorda
 
 (async () => {
   if (!tg.configurado()) {
-    console.error('Faltan los secretos TELEGRAM_TOKEN y TELEGRAM_CHAT_ID.');
-    process.exit(1);
+    // Sin Telegram configurado no se envía nada, y tampoco se marca error
+    // (así GitHub no te manda correos de fallo cada hora).
+    console.log('Faltan los secretos TELEGRAM_TOKEN y TELEGRAM_CHAT_ID. No envío nada.');
+    return;
   }
   const r = await tg.enviarMensaje(m);
   if (!r || !r.ok) process.exit(1);
