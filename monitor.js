@@ -18,7 +18,7 @@ const REAVISO_MIN = 10;
 // Se pueden cambiar sin tocar el código con la variable PASOS (separados por "|").
 const PASOS = (process.env.PASOS
   ? process.env.PASOS.split('|')
-  : ['Agendar cita', 'Persona natural', 'Videoatención', 'Devoluciones', 'veh[ií]culos', CIUDAD]
+  : ['Agendar cita', 'Persona natural', '?Siguiente', 'Videoatención', 'Devoluciones', '?Siguiente', '?Tr[aá]mites', 'veh[ií]culos', '?' + CIUDAD, '?Siguiente']
 ).map((p) => p.trim()).filter(Boolean);
 
 const SIN_CITAS = /no se encontraron especialidades|no hay (citas|agenda|disponibilidad)|sin disponibilidad|no se encontr(ó|aron)|no existen? (citas|agenda)|no (tiene|cuenta con) disponibilidad|agotad/i;
@@ -46,7 +46,8 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function aRegex(texto) {
   // Acepta regex escrita como texto; si no compila, busca el texto tal cual.
-  try { return new RegExp(texto, 'i'); } catch { return new RegExp(texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); }
+  // Los espacios aceptan saltos de línea: en el portal "Persona natural" sale en dos líneas.
+  try { return new RegExp(texto.replace(/ +/g, '\\s*'), 'i'); } catch { return new RegExp(texto.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); }
 }
 
 // Busca un elemento con ese texto y lo pulsa. Prueba botones, links, opciones de listas y texto suelto.
@@ -152,14 +153,23 @@ async function consultar(browser, { fotosPorPaso = false } = {}) {
     await esperar(4000); // dar tiempo a que la página termine de dibujarse
     await foto('Inicio');
     const recorrido = [];
-    for (const paso of PASOS) {
+    for (const pasoTexto of PASOS) {
+      // Un paso que empieza con "?" es opcional: si no aparece, se sigue.
+      const opcional = pasoTexto.startsWith('?');
+      const paso = opcional ? pasoTexto.slice(1) : pasoTexto;
+      // Si ya salió el aviso de "no hay", no hace falta seguir.
+      const textoAhora = await page.locator('body').innerText().catch(() => '');
+      if (SIN_CITAS.test(textoAhora)) {
+        return { estado: 'sin_citas', detalle: `${(textoAhora.match(SIN_CITAS) || [''])[0]} (después de ${recorrido.join(' > ')})`, captura: await page.screenshot({ fullPage: true }), fotos };
+      }
       const hecho = await pulsar(page, paso);
+      if (!hecho && opcional) continue;
       if (!hecho) {
         await foto(`No encontré "${paso}"`);
         const extra = fotosPorPaso ? await describir(page) : {};
         return { estado: 'desconocido', detalle: `No encontré el paso "${paso}". Pasos hechos: ${recorrido.join(' > ') || 'ninguno'}`, captura: await page.screenshot({ fullPage: true }), fotos, ...extra };
       }
-      recorrido.push(hecho);
+      recorrido.push(hecho.replace(/\s+/g, ' '));
       await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
       await esperar(1200);
       await foto(`Paso: ${hecho}`);
