@@ -143,6 +143,7 @@ async function consultar(browser, { fotosPorPaso = false } = {}) {
   const foto = async (nombre) => { if (fotosPorPaso) fotos.push({ nombre, png: await page.screenshot({ fullPage: true }) }); };
   try {
     await page.goto(URL_PORTAL, { waitUntil: 'networkidle', timeout: 60000 });
+    await esperar(4000); // dar tiempo a que la página termine de dibujarse
     await foto('Inicio');
     const recorrido = [];
     for (const paso of PASOS) {
@@ -186,6 +187,7 @@ async function diagnostico(browser) {
   r.fotos.forEach((f, i) => fs.writeFileSync(`diagnostico/${String(i).padStart(2, '0')}.png`, f.png));
   if (r.html) fs.writeFileSync('diagnostico/ultima-pantalla.html', r.html);
   if (r.clicables) console.log(`Elementos visibles en la última pantalla:\n${r.clicables}`);
+  if (r.html) console.log(`HTML (primeros 6000):\n${r.html.replace(/<style[\s\S]*?<\/style>/g, '').slice(0, 6000)}`);
   for (const f of r.fotos) await tg.enviarFoto(f.png, f.nombre);
   await tg.enviarMensaje(`Resultado: ${r.estado}\n${r.detalle}`);
   console.log(`Diagnóstico: ${r.estado} | ${r.detalle}`);
