@@ -21,7 +21,7 @@ const PASOS = (process.env.PASOS
   : ['Agendar cita', 'Persona natural', 'Videoatención', 'Devoluciones', 'veh[ií]culos', CIUDAD]
 ).map((p) => p.trim()).filter(Boolean);
 
-const SIN_CITAS = /no hay (citas|agenda|disponibilidad)|sin disponibilidad|no se encontr(ó|aron)|no existen? (citas|agenda)|no (tiene|cuenta con) disponibilidad|agotad/i;
+const SIN_CITAS = /no se encontraron especialidades|no hay (citas|agenda|disponibilidad)|sin disponibilidad|no se encontr(ó|aron)|no existen? (citas|agenda)|no (tiene|cuenta con) disponibilidad|agotad/i;
 
 function horaColombia(d = new Date()) {
   const p = new Intl.DateTimeFormat('es-CO', {
@@ -128,8 +128,14 @@ async function describir(page) {
       .map((e) => `${e.tagName.toLowerCase()}${e.id ? '#' + e.id : ''}: ${(e.innerText || e.value || e.getAttribute('aria-label') || '').trim().replace(/\s+/g, ' ').slice(0, 80)}`)
       .filter((t) => !t.endsWith(': ')).slice(0, 80).join('\n');
   }).catch((e) => `error: ${e.message}`);
-  const frames = page.frames().map((f) => f.url()).filter((u) => u && u !== 'about:blank').join('\n');
-  return { html, clicables: `${clicables}\n-- frames --\n${frames}\n-- url: ${page.url()}` };
+  const frames = (await Promise.all(page.frames().filter((f) => f.url() && f.url() !== 'about:blank').map(async (f) => {
+    const el = await f.frameElement().catch(() => null);
+    const box = el ? await el.boundingBox().catch(() => null) : null;
+    const vis = el ? await el.isVisible().catch(() => false) : 'principal';
+    return `${f.url().slice(0, 70)} visible=${vis} caja=${box ? `${Math.round(box.width)}x${Math.round(box.height)}` : '-'}`;
+  }))).join('\n');
+  const texto = (await page.locator('body').innerText().catch(() => '')).replace(/\n\s*\n/g, '\n').slice(0, 2500);
+  return { html, clicables: `${clicables}\n-- texto visible --\n${texto}\n-- frames --\n${frames}\n-- url: ${page.url()}` };
 }
 
 // Una consulta completa. Devuelve { estado, detalle, captura }.
