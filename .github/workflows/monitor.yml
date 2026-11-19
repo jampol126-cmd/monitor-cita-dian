@@ -1,12 +1,10 @@
 name: Monitor citas DIAN
 
 on:
-  schedule:
-    # Cada hora entre 6 a. m. y 8 p. m. hora Colombia (11:00-01:00 UTC).
-    # Cada tanda dura ~5 h 40 min y revisa cada 2-3 min. Como solo puede haber
-    # una tanda corriendo, la siguiente queda en cola y arranca apenas termina la
-    # anterior: así el retraso del cron de GitHub no deja huecos.
-    - cron: '5 0,1,11-23 * * *'
+  # Horario automático APAGADO: el portal pide reCAPTCHA antes de mostrar la
+  # disponibilidad, así que una consulta automática no puede ver las citas.
+  # schedule:
+  #   - cron: '5 0,1,11-23 * * *'
   workflow_dispatch:
     inputs:
       modo:
