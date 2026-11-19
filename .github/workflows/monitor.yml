@@ -1,0 +1,52 @@
+name: Monitor citas DIAN
+
+on:
+  schedule:
+    # Cada hora entre 6 a. m. y 8 p. m. hora Colombia (11:00-01:00 UTC).
+    # Cada tanda dura ~5 h 40 min y revisa cada 2-3 min. Como solo puede haber
+    # una tanda corriendo, la siguiente queda en cola y arranca apenas termina la
+    # anterior: así el retraso del cron de GitHub no deja huecos.
+    - cron: '5 0,1,11-23 * * *'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'monitor = vigilar; diagnostico = una sola consulta con fotos de cada paso'
+        type: choice
+        options: [monitor, diagnostico]
+        default: diagnostico
+
+concurrency:
+  group: monitor-${{ github.event.inputs.modo || 'monitor' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Instalar navegador
+        run: npx playwright install --with-deps chromium
+
+      - name: Vigilar citas
+        env:
+          TZ: America/Bogota
+          MODO: ${{ github.event.inputs.modo || 'monitor' }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DATOS_CITA: ${{ secrets.DATOS_CITA }}
+          CIUDAD: ${{ vars.CIUDAD || 'Medellín' }}
+          PASOS: ${{ vars.PASOS }}
+          INTERVALO_SEG: ${{ vars.INTERVALO_SEG || '150' }}
+        run: node monitor.js

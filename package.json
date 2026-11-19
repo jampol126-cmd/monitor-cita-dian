@@ -1,0 +1,14 @@
+{
+  "name": "monitor-cita-dian",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Avisa por Telegram cuando hay citas DIAN para devolución de IVA de vehículos eléctricos e híbridos.",
+  "scripts": {
+    "monitor": "node monitor.js",
+    "diagnostico": "MODO=diagnostico node monitor.js",
+    "chat-id": "node chat-id.js"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
