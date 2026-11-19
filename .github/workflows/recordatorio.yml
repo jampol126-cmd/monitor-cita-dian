@@ -1,12 +1,7 @@
 name: Recordatorio citas DIAN
 
 on:
-  schedule:
-    # Cada hora de 7 a. m. a 7 p. m. hora Colombia, lunes a sábado.
-    # (Colombia es UTC-5: 12:00-23:00 UTC, y las 7 p. m. son las 00:00 UTC del día siguiente.)
-    # GitHub puede atrasar cada aviso unos minutos.
-    - cron: '0 12-23 * * 1-6'
-    - cron: '0 0 * * 2-6,0'
+  # Horario apagado: el monitor automático ya avisa cuando hay cita.
   workflow_dispatch:   # botón "Run workflow" para probarlo
 
 permissions:

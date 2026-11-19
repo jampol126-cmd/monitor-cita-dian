@@ -164,6 +164,11 @@ async function consultar(browser, { fotosPorPaso = false } = {}) {
       }
       const hecho = await pulsar(page, paso);
       if (!hecho && opcional) continue;
+      if (!hecho && recorrido.some((r) => /devoluciones/i.test(r))) {
+        // Ya pasamos "Devoluciones" y NO salió el aviso de "no se encontraron especialidades":
+        // es la señal de que abrieron cupos, aunque no reconozcamos la pantalla siguiente.
+        return { estado: 'disponible', detalle: `Después de ${recorrido.join(' > ')} ya no sale el aviso de "no hay". Puede haber cita (no encontré el paso "${paso}").`, captura: await page.screenshot({ fullPage: true }), fotos };
+      }
       if (!hecho) {
         await foto(`No encontré "${paso}"`);
         const extra = fotosPorPaso ? await describir(page) : {};
